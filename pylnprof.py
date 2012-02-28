@@ -7,9 +7,19 @@ import signal
 
 from optparse import OptionParser
 
-LNPROF_NS = 'sfa'
+LNPROF_NS = 'test'
 LNPROF_NODEID=0
 LNPROF_ROOT='/'
+
+def get_nodeid(ns=LNPROF_NS):
+    node_id_file = '/etc/lnprof-%s'%ns
+    try:
+        node_id = open(node_id_file).read().rstrip()
+    except IOError:
+        hostname = os.popen('/usr/bin/hostname').read().rstrip()
+        node_id = os.popen('wget www.lnprof.org/command?action=getnode&ns=%s&hostname=%s'%(ns,hostname)).read().rstrip()
+        open(node_id_file).write(node_id)
+    return node_id
 
 
 def excepthook(t, val, tb):
@@ -31,7 +41,7 @@ def excepthook(t, val, tb):
     %(root)sError/%(exc_name)s/%(trace)s/%(val)s
     """%inp
 
-    pushlog(log_path)
+    pushlog(get_nodeid(),log_path)
     runcron()
 
 def handler(signum, frame):
@@ -45,7 +55,7 @@ def runcron():
         last_stamp = int(open(last_sync_file).read())
         now = int(time.time())
         if (now-last_stamp>=300):
-            commit()
+            commit(get_nodeid())
             stamp = True
     except:
         stamp = True
@@ -58,7 +68,6 @@ def runcron():
 
 
 sys.excepthook = excepthook
-
 
 def pushlog(log_path,node_id=LNPROF_NODEID,ns=LNPROF_NS):
     cache = open('/tmp/lnprof-%s-%s'%(ns,nodeid),'a') 
